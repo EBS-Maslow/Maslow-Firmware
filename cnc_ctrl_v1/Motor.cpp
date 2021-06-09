@@ -43,20 +43,29 @@ int  Motor::setupMotor(const int& pwmPin, const int& pin1, const int& pin2){
     pinMode(_pwmPin,   INPUT);   // TLE5206 'Error Flag' pin
     pinMode(_pin1,     OUTPUT);
     pinMode(_pin2,     OUTPUT);
-    
+
  //stop the motor
     digitalWrite(_pin1,    LOW);
     digitalWrite(_pin2,    LOW) ;
-    
+
+  } else if (TB6643 == true){
+  //set pinmodes
+    pinMode(_pin1,     OUTPUT);
+    pinMode(_pin2,     OUTPUT);
+
+  //stop the motor
+    digitalWrite(_pin1,    LOW);
+    digitalWrite(_pin2,    LOW) ;
+  
   } else if (TLE9201 == true) {
   //set pinmodes
     pinMode(_pwmPin,   OUTPUT);
     pinMode(_pin1,     OUTPUT);   // TLE9201 DIR pin
     pinMode(_pin2,     OUTPUT);   // TLE9201 ENABLE pin
-    
+
   //stop the motor
     digitalWrite(_pin2,    HIGH); // TLE9201 ENABLE pin, LOW = on
-    
+
   } else {
   //set pinmodes
     pinMode(_pwmPin,   OUTPUT);
@@ -78,6 +87,10 @@ void Motor::attach(){
 void Motor::detach(){
     if (_attachedState != 0) {
         if (TLE5206 == true) {
+          //stop the motor
+          digitalWrite(_pin1,    LOW);
+          digitalWrite(_pin2,    LOW) ;
+        } else if (TB6643 == true){
           //stop the motor
           digitalWrite(_pin1,    LOW);
           digitalWrite(_pin2,    LOW) ;
@@ -116,67 +129,27 @@ void Motor::write(int speed, bool force){
     if ((_attachedState == 1 or force) and (FAKE_SERVO_STATE != FAKE_SERVO_PERMITTED)){
         speed = constrain(speed, -255, 255);
         _lastSpeed = speed; //saves speed for use in additive write
-        bool forward = (speed > 0);
+        bool forward = (speed >= 0);
         speed = abs(speed); //remove sign from input because direction is set by control pins on H-bridge
 
         bool usePin1 = ((_pin1 != 4) && (_pin1 != 13) && (_pin1 != 11) && (_pin1 != 12)); // avoid PWM using timer0 or timer1
         bool usePin2 = ((_pin2 != 4) && (_pin2 != 13) && (_pin2 != 11) && (_pin2 != 12)); // avoid PWM using timer0 or timer1
-        bool usepwmPin = ((TLE5206 == false) && (_pwmPin != 4) && (_pwmPin != 13) && (_pwmPin != 11) && (_pwmPin != 12)); // avoid PWM using timer0 or timer1       
-        if (!(TLE5206 || TLE9201)) { // L298 boards
-            if (forward){
-                if (usepwmPin){
-                    digitalWrite(_pin1 , HIGH );
-                    digitalWrite(_pin2 ,  LOW  );
-                    analogWrite(_pwmPin, speed);
-                }
-                else if (usePin2) {
-                    digitalWrite(_pin1 , HIGH );
-                    analogWrite(_pin2 , 255 - speed); // invert drive signals - don't alter speed
-                    digitalWrite(_pwmPin, HIGH);
-                }
-                else{
-                    analogWrite(_pin1 , speed);
-                    digitalWrite(_pin2 , LOW );
-                    digitalWrite(_pwmPin, HIGH);
-                }
-            }
-            else { // reverse or zero speed
-                if (usepwmPin){
-                    digitalWrite(_pin2 , HIGH);
-                    digitalWrite(_pin1 , LOW );
-                    analogWrite(_pwmPin, speed);
-                }
-                else if (usePin1) {
-                    analogWrite(_pin1 , 255 - speed); // invert drive signals - don't alter speed
-                    digitalWrite(_pin2 , HIGH );
-                    digitalWrite(_pwmPin, HIGH);
-                }
-                else {
-                    analogWrite(_pin2 , speed);
-                    digitalWrite(_pin1 , LOW );
-                    digitalWrite(_pwmPin, HIGH);
-                }
-            }
-        } 
-        else if (TLE5206)  {
-            speed = constrain(speed, 0, 254); // avoid issue when PWM value is 255
+        bool usepwmPin = ((TLE5206 == false) && (_pwmPin != 4) && (_pwmPin != 13) && (_pwmPin != 11) && (_pwmPin != 12)); // avoid PWM using timer0 or timer1
+       if (TLE5206)  {
             if (forward) {
                 if (speed > 0) {
                     if (usePin2) {
                         digitalWrite(_pin1 , HIGH );
                         analogWrite(_pin2 , 255 - speed); // invert drive signals - don't alter speed
-                    } 
-                    else {
+                    } else {
                         analogWrite(_pin1 , speed);
                         digitalWrite(_pin2 , LOW );
                     }
-                } 
-                else { // speed = 0 so put on the brakes
+                } else { // speed = 0 so put on the brakes
                     digitalWrite(_pin1 , LOW );
                     digitalWrite(_pin2 , LOW );
                 }
-            } 
-            else { // reverse
+            } else { // reverse
                 if (usePin1) {
                     analogWrite(_pin1 , 255 - speed); // invert drive signals - don't alter speed
                     digitalWrite(_pin2 , HIGH );
@@ -185,15 +158,28 @@ void Motor::write(int speed, bool force){
                     digitalWrite(_pin1 , LOW );
                 }
             }
-        }
-        else if (TLE9201) {
+        } else if (TB6643){ //EBS 1.5
+             if (forward) {
+                if (speed > 0) {
+                        analogWrite(_pin1 , speed);
+                        digitalWrite(_pin2 , LOW); 
+                } else { // speed = 0 brake
+                    digitalWrite(_pin1 , HIGH);
+                    digitalWrite(_pin2 , HIGH);
+                }
+            } else { // reverse     
+                    digitalWrite(_pin1 , LOW);
+                    analogWrite(_pin2 , speed);   
+                  
+            }
+        } else if (TLE9201) {
             int dirPin     = _pin1;
             int enablePin  = _pin2;
             const int TOP  = 1;
             /*
             * The TLE9201 uses dedicated DIR, PWM and DISable pins,
-            * so logic from previous chips won't work. In addition, 
-            * the left and right motors are affected by chainOverSprocket 
+            * so logic from previous chips won't work. In addition,
+            * the left and right motors are affected by chainOverSprocket
             * but the Z motor is not.
             */
 
@@ -203,23 +189,20 @@ void Motor::write(int speed, bool force){
             if (_pwmPin == ENB) { // Z motor unaffected by chainOverSprocket
                 if (forward) {
                     dirCMD = retract;
-                } 
-                else {
+                } else {
                     dirCMD = extend;
-                } 
+                }
             } else { // L and R motor affected by chainOverSprocket
                 if(sysSettings.chainOverSprocket == TOP) {
                     if (forward) {
                         dirCMD = extend;
-                    } 
-                    else {
+                    } else {
                         dirCMD = retract;
-                    } 
+                    }
                 } else {
                     if (forward) {
                         dirCMD = retract;
-                    } 
-                    else {
+                    } else {
                         dirCMD = extend;
                     }
                 }
@@ -228,8 +211,39 @@ void Motor::write(int speed, bool force){
             digitalWrite(dirPin, dirCMD); // TLE9201 DIR pin
             analogWrite (_pwmPin, speed); // TLE9201 PWM pin
             digitalWrite(enablePin, LOW); // TLE9201 ENABLE pin, HIGH = disable
+
+            
+        }else { // L298 boards
+            if (forward){
+                if (usepwmPin){
+                    digitalWrite(_pin1 , HIGH );
+                    digitalWrite(_pin2 ,  LOW  );
+                    analogWrite(_pwmPin, speed);
+                } else if (usePin2) {
+                    digitalWrite(_pin1 , HIGH );
+                    analogWrite(_pin2 , 255 - speed); // invert drive signals - don't alter speed
+                    digitalWrite(_pwmPin, HIGH);
+                } else{
+                    analogWrite(_pin1 , speed);
+                    digitalWrite(_pin2 , LOW );
+                    digitalWrite(_pwmPin, HIGH);
+                }
+            } else { // reverse or zero speed
+                if (usepwmPin){
+                    digitalWrite(_pin2 , HIGH);
+                    digitalWrite(_pin1 , LOW );
+                    analogWrite(_pwmPin, speed);
+                } else if (usePin1) {
+                    analogWrite(_pin1 , 255 - speed); // invert drive signals - don't alter speed
+                    digitalWrite(_pin2 , HIGH );
+                    digitalWrite(_pwmPin, HIGH);
+                } else {
+                    analogWrite(_pin2 , speed);
+                    digitalWrite(_pin1 , LOW );
+                    digitalWrite(_pwmPin, HIGH);
+                }
+            }
         }
-    else {} // add new boards here
     }
 }
 
@@ -241,6 +255,6 @@ void Motor::directWrite(int voltage){
 }
 
 int  Motor::attached(){
-    
+
     return _attachedState;
 }
