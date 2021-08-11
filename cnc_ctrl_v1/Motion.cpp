@@ -279,7 +279,7 @@ int   arc(const float& X1, const float& Y1, const float& Z1, const float& X2, co
       if (useZ) {
         gcodeSubstitution += " Z" + String(Z2 / sys.inchesToMMConversion, 3) + " ";
       }
-      Serial.println("Large-radius arc replaced by straight line to improve accuracy: " + gcodeSubstitution);
+      Serial.println(gcodeSubstitution); //Large-radius arc replaced by straight line to improve accuracy
       G1(gcodeSubstitution, 1);
       return 1;
     }
