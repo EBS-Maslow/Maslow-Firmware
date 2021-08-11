@@ -37,7 +37,7 @@ int  Motor::setupMotor(const int& pwmPin, const int& pin1, const int& pin2){
   _pin1  = pin1;
   _pin2  = pin2;
   _attachedState = 0;
-
+  
   if (TLE5206 == true) {
   //set pinmodes
     pinMode(_pwmPin,   INPUT);   // TLE5206 'Error Flag' pin
@@ -131,7 +131,7 @@ void Motor::write(int speed, bool force){
         _lastSpeed = speed; //saves speed for use in additive write
         bool forward = (speed >= 0);
         speed = abs(speed); //remove sign from input because direction is set by control pins on H-bridge
-
+        
         bool usePin1 = ((_pin1 != 4) && (_pin1 != 13) && (_pin1 != 11) && (_pin1 != 12)); // avoid PWM using timer0 or timer1
         bool usePin2 = ((_pin2 != 4) && (_pin2 != 13) && (_pin2 != 11) && (_pin2 != 12)); // avoid PWM using timer0 or timer1
         bool usepwmPin = ((TLE5206 == false) && (_pwmPin != 4) && (_pwmPin != 13) && (_pwmPin != 11) && (_pwmPin != 12)); // avoid PWM using timer0 or timer1       
@@ -199,19 +199,18 @@ void Motor::write(int speed, bool force){
                 }
             }
         }
-        else if (TB6643){ // EBS v1.5
+        else if (TB6643) { //EBS 1.5
              if (forward) {
                 if (speed > 0) {
                         analogWrite(_pin1 , speed);
                         digitalWrite(_pin2 , LOW); 
-                } else { // speed = 0 brake
+                } else { // speed = 0 so put on the brakes
                     digitalWrite(_pin1 , HIGH);
                     digitalWrite(_pin2 , HIGH);
                 }
-            } else { // reverse     
+            } else { // reverse      
                     digitalWrite(_pin1 , LOW);
-                    analogWrite(_pin2 , speed);   
-                  
+                    analogWrite(_pin2 , speed);          
             }
         } else if (TLE9201) {
             int dirPin     = _pin1;
@@ -257,6 +256,7 @@ void Motor::write(int speed, bool force){
             digitalWrite(enablePin, LOW); // TLE9201 ENABLE pin, HIGH = disable
         }
     else {} // add new boards here
+
     }
 }
 

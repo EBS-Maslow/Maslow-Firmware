@@ -66,15 +66,13 @@ void setup(){
     if (TLE5206 == true) { Serial.print(F(" TLE5206 ")); }
     if (TLE9201 == true) { Serial.print(F(" TLE9201 ")); }
     if (TB6643 == true)  { Serial.print(F(" TB6643 ")); }
-    Serial.println(F(" Detected"));
     sys.inchesToMMConversion = 1;
     sys.writeStepsToEEPROM = false;
     FAKE_SERVO_STATE = EEPROM[ FAKE_SERVO ];
     if (FAKE_SERVO_STATE == FAKE_SERVO_PERMITTED) { // only this value is accepted
         Serial.println(F("FAKE_SERVO on"));         // to turn this on
     } else {
-        Serial.println(F("FAKE_SERVO off"));        // otherwise 
-        EEPROM[ FAKE_SERVO ] = 0;                   // force it to the 'off' value
+        EEPROM[ FAKE_SERVO ] = 0;                   // otherwise force it to the 'off' value
     }
     settingsLoadFromEEprom();
     sys.feedrate = sysSettings.maxFeed / 2.0;
@@ -94,7 +92,7 @@ void setup(){
     #endif
     
     Serial.println(F("Grbl v1.00"));  // Why GRBL?  Apparently because some programs are silly and look for this as an initialization command
-    Serial.println(F("ready"));
+    Serial.println(F("READY"));
     reportStatusMessage(STATUS_OK);
 
 }
